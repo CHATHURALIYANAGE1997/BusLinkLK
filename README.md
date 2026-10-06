@@ -239,12 +239,12 @@ I'm working in two-week sprints and tracking everything in Jira.
 
 This is a personal learning project, but if you spot something wrong or have an idea, I'd genuinely like to hear it. Open an issue, or:
 
-1. Branch off `develop` (`git checkout -b feature/SCRUM-<n>-short-name`)
+1. Branch off `main` (`git checkout -b feature/SCRUM-<n>-short-name`)
 2. Commit your changes, with the Jira key in the message (`git commit -m "SCRUM-<n> Add something useful"`)
 3. Push the branch (`git push origin feature/SCRUM-<n>-short-name`)
-4. Open a pull request into `develop`
+4. Open a pull request into `main`
 
-`main` only gets code that's been released.
+I use trunk-based development: feature branches are short-lived, every change reaches `main` through a pull request with a passing build, and milestones are tagged on `main` (for example `v0.1-sprint-0`).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
