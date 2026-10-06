@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>lk.buslink</groupId>
+        <artifactId>buslink-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>buslink-services</artifactId>
+    <packaging>pom</packaging>
+    <name>BusLink :: Services</name>
+    <description>Parent for all BusLink microservices</description>
+
+    <modules>
+        <module>api-gateway</module>
+        <module>ingestion-gateway</module>
+        <module>route-service</module>
+        <module>tracking-service</module>
+        <module>journey-query-service</module>
+        <module>fare-service</module>
+        <module>wallet-service</module>
+        <module>notification-service</module>
+        <module>analytics-service</module>
+    </modules>
+</project>

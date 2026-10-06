@@ -1,0 +1,16 @@
+# Normalise line endings so Windows and Linux checkouts behave the same
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Unix scripts must stay LF (mvnw breaks with CRLF)
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Binary files
+*.jar binary
+*.png binary
+*.jpg binary
+*.zip binary
