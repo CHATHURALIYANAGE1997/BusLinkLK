@@ -1,0 +1,42 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Compiled and packaged files
+*.class
+*.jar
+*.war
+!**/src/main/**/*.jar
+
+# Logs and test reports
+*.log
+TEST*.xml
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Local environment and secrets
+.env
+*.env.local
+
+# Node (live map tooling, k6)
+node_modules/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large media files
+*.mp4
+*.mov
+*.avi
