@@ -37,6 +37,19 @@ jobs:
       - name: Validate compose file
         run: $COMPOSE config --quiet
 
+      - name: Pull images
+        run: |
+          failed=0
+          for img in $($COMPOSE config --images); do
+            if out=$(docker pull -q "$img" 2>&1); then
+              echo "pulled $img"
+            else
+              echo "::error title=image pull failed::${img}: $(echo "$out" | tail -1)"
+              failed=1
+            fi
+          done
+          exit $failed
+
       - name: Start infrastructure and wait until healthy
         run: $COMPOSE up -d --wait --wait-timeout 240
 
