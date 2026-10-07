@@ -169,13 +169,13 @@ Bigger decisions (why Kafka, why a saga instead of distributed transactions, why
 
 ## Getting Started
 
-Fair warning: this is early days. Sprint 0 is about getting the foundation in place, so the steps below describe how it *will* work once that lands. I'll keep this section honest as things change.
+Fair warning: this is early days. Sprint 0 is about getting the foundation in place: the build and the local infrastructure work today, the services arrive over the next sprints. I'll keep this section honest as things change.
 
 ### Prerequisites
 
 * Java 21 (Temurin or any OpenJDK build)
 * Maven is optional: the repo ships with the Maven Wrapper (`mvnw`), which downloads the right Maven version on first use
-* Docker Desktop, with at least 8 GB of memory given to it
+* Docker Desktop (or Docker Engine with Compose v2.20+), with 6–8 GB of memory given to it
 * Git
 
 ### Installation
@@ -185,19 +185,26 @@ Fair warning: this is early days. Sprint 0 is about getting the foundation in pl
    git clone https://github.com/CHATHURALIYANAGE1997/BusLinkLK.git
    cd BusLinkLK
    ```
-2. Start the infrastructure (Kafka, Schema Registry, Postgres with PostGIS, Redis)
+2. Start the local infrastructure and wait until every container is healthy
    ```sh
-   docker compose -f infra/docker-compose.yml up -d
+   docker compose -f infra/docker-compose.yml --profile ui up -d --wait
    ```
+   Drop `--profile ui` to skip Kafka UI and save memory.
+   | Service | Address |
+   |---|---|
+   | Kafka (from your IDE) | `localhost:9092` |
+   | Schema Registry | http://localhost:8091 |
+   | Kafka UI | http://localhost:8089 |
+   | PostgreSQL + PostGIS | `localhost:5432` (databases `route`, `fare`, `wallet`, `analytics`) |
+   | Redis | `localhost:6379` |
+
+   Stop it with `docker compose -f infra/docker-compose.yml down` (add `-v` to wipe the data). More detail in [infra/README.md](infra/README.md).
 3. Build and run the tests
    ```sh
    ./mvnw verify        # macOS / Linux / Git Bash
    mvnw.cmd verify      # Windows Command Prompt
    ```
-4. Start the services and the simulator
-   ```sh
-   docker compose -f infra/docker-compose.yml --profile app up -d
-   ```
+4. Start the services and the simulator (coming in later sprints)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
