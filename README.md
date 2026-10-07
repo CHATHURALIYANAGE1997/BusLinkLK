@@ -123,7 +123,7 @@ The short version: buses talk to Kafka through an ingestion gateway, people talk
   +-------------------+                               |
            |                                          v
            |              +------------------------------------------------------+
-           |              |  Microservices  (Spring Boot 3, one database each)   |
+           |              |  Microservices  (Spring Boot 4, one database each)   |
            |              |                                                      |
            |              |  tracking        journey-query      route            |
            |              |  fare            wallet             notification     |
@@ -173,7 +173,7 @@ Fair warning: this is early days. Sprint 0 is about getting the foundation in pl
 ### Prerequisites
 
 * Java 21 (Temurin or any OpenJDK build)
-* Maven 3.9+ (or use the Maven wrapper once it's in the repo)
+* Maven is optional: the repo ships with the Maven Wrapper (`mvnw`), which downloads the right Maven version on first use
 * Docker Desktop, with at least 8 GB of memory given to it
 * Git
 
@@ -190,7 +190,8 @@ Fair warning: this is early days. Sprint 0 is about getting the foundation in pl
    ```
 3. Build and run the tests
    ```sh
-   mvn verify
+   ./mvnw verify        # macOS / Linux / Git Bash
+   mvnw.cmd verify      # Windows Command Prompt
    ```
 4. Start the services and the simulator
    ```sh
@@ -284,7 +285,7 @@ Project link: [https://github.com/CHATHURALIYANAGE1997/BusLinkLK](https://github
 [sprint-shield]: https://img.shields.io/badge/sprint-0%20foundation-blue?style=for-the-badge
 [java-shield]: https://img.shields.io/badge/Java_21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white
 [java-url]: https://openjdk.org/projects/jdk/21/
-[spring-shield]: https://img.shields.io/badge/Spring_Boot_3-6DB33F?style=for-the-badge&logo=springboot&logoColor=white
+[spring-shield]: https://img.shields.io/badge/Spring_Boot_4-6DB33F?style=for-the-badge&logo=springboot&logoColor=white
 [spring-url]: https://spring.io/projects/spring-boot
 [kafka-shield]: https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white
 [kafka-url]: https://kafka.apache.org/
