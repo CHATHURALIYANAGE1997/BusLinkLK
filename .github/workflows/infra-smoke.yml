@@ -82,7 +82,16 @@ jobs:
 
       - name: Show logs on failure
         if: failure()
-        run: $COMPOSE logs --no-color --tail 200
+        run: |
+          $COMPOSE ps -a
+          $COMPOSE logs --no-color --tail 200
+          # Also raise one annotation per service so the failure is visible on the PR
+          # without opening the raw log.
+          for svc in $($COMPOSE config --services); do
+            state=$($COMPOSE ps -a --format '{{.State}} {{.Health}} {{.Status}}' "$svc" 2>/dev/null | head -1)
+            tail=$($COMPOSE logs --no-color --no-log-prefix --tail 15 "$svc" 2>&1 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=infra-smoke ${svc}::state=[${state:-not created}]%0A${tail}"
+          done
 
       - name: Stop and remove everything
         if: always()
