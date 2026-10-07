@@ -99,7 +99,7 @@ services:
   # One server, one database and owner per service (see postgres/20-buslink-databases.sh).
   #   jdbc:postgresql://localhost:5432/<route|fare|wallet|analytics>
   postgres:
-    image: postgis/postgis:${POSTGIS_VERSION:-17-3.6}
+    image: postgis/postgis:${POSTGIS_VERSION:-17-3.5}
     container_name: buslink-postgres
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
