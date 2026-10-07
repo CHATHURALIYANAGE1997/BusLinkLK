@@ -187,8 +187,9 @@ Fair warning: this is early days. Sprint 0 is about getting the foundation in pl
    ```
 2. Start the local infrastructure and wait until every container is healthy
    ```sh
-   docker compose -f infra/docker-compose.yml up -d --wait
+   docker compose -f infra/docker-compose.yml --profile ui up -d --wait
    ```
+   Drop `--profile ui` to skip Kafka UI and save memory.
    | Service | Address |
    |---|---|
    | Kafka (from your IDE) | `localhost:9092` |

@@ -19,7 +19,8 @@ Everything needed to run BusLink outside the IDE lives here.
 Run from the repository root:
 
 ```sh
-docker compose -f infra/docker-compose.yml up -d --wait   # start, wait until healthy
+docker compose -f infra/docker-compose.yml up -d --wait                # core only, wait until healthy
+docker compose -f infra/docker-compose.yml --profile ui up -d --wait   # core + Kafka UI
 docker compose -f infra/docker-compose.yml ps             # status
 docker compose -f infra/docker-compose.yml logs -f kafka  # follow one service's logs
 docker compose -f infra/docker-compose.yml down           # stop, keep data
@@ -30,9 +31,21 @@ docker compose -f infra/docker-compose.yml down -v        # stop and delete all 
 |---|---|---|---|
 | Kafka | `localhost:9092` | `kafka:29092` | KRaft, single broker + controller |
 | Schema Registry | http://localhost:8091 | http://schema-registry:8081 | Compatibility: `BACKWARD` |
-| Kafka UI | http://localhost:8089 | | Topics, messages, consumer groups, schemas |
+| Kafka UI | http://localhost:8089 | | Profile `ui`. Topics, messages, consumer groups, schemas |
 | PostgreSQL + PostGIS | `localhost:5432` | `postgres:5432` | Admin `buslink` / `buslink` |
 | Redis | `localhost:6379` | `redis:6379` | Append-only file enabled |
+
+### Profiles
+
+The default start is a lean core so it fits on a laptop with limited memory. Extras are opt-in.
+
+| Profile | Adds | Approx. memory |
+|---|---|---|
+| *(none)* | kafka, schema-registry, postgres, redis | ~1.5 GB |
+| `ui` | kafka-ui | +0.3 GB |
+| `observability` | Prometheus, Grafana, Jaeger (Sprint 6) | later |
+
+Set `COMPOSE_PROFILES=ui` in `infra/.env` to include Kafka UI every time (`.env.example` already does).
 
 Host ports stay out of 8080–8090 on purpose, which is reserved for the BusLink services.
 

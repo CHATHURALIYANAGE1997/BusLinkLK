@@ -1,6 +1,7 @@
 # BusLink LK - local development infrastructure
 #
-#   docker compose -f infra/docker-compose.yml up -d --wait     start and wait until healthy
+#   docker compose -f infra/docker-compose.yml up -d --wait                start the core and wait until healthy
+#   docker compose -f infra/docker-compose.yml --profile ui up -d --wait   core + Kafka UI
 #   docker compose -f infra/docker-compose.yml ps               show status
 #   docker compose -f infra/docker-compose.yml down             stop (data is kept)
 #   docker compose -f infra/docker-compose.yml down -v          stop and delete all data
@@ -8,6 +9,12 @@
 # This file is for LOCAL DEVELOPMENT ONLY: one Kafka broker, no TLS, simple
 # passwords. Cloud environments use the same application images with different
 # configuration (see docs/adr, ADR-009 "Configuration and environments").
+#
+# Profiles keep the default start small for laptops with limited memory:
+#   (no profile)    kafka, schema-registry, postgres, redis - always start
+#   ui              kafka-ui
+#   observability   Prometheus, Grafana, Jaeger (Sprint 6)
+# Set COMPOSE_PROFILES=ui in infra/.env to always include Kafka UI.
 #
 # Every value can be overridden in infra/.env (copy infra/.env.example).
 # Host ports avoid the 8080-8090 range reserved for the BusLink services.
@@ -76,9 +83,10 @@ services:
     restart: unless-stopped
 
   # -------------------------------------------------------------------- Kafka UI
-  # Browse topics, messages, consumer groups and schemas.
+  # Browse topics, messages, consumer groups and schemas. Opt-in: --profile ui
   #   http://localhost:8089
   kafka-ui:
+    profiles: ["ui"]
     image: ghcr.io/kafbat/kafka-ui:${KAFKA_UI_VERSION:-v1.5.0}
     container_name: buslink-kafka-ui
     depends_on:

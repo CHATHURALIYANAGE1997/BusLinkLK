@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      COMPOSE: docker compose -f infra/docker-compose.yml
+      COMPOSE: docker compose -f infra/docker-compose.yml --profile ui
 
     steps:
       - name: Check out code
@@ -36,6 +36,12 @@ jobs:
 
       - name: Validate compose file
         run: $COMPOSE config --quiet
+
+      - name: Default start is the lean core (Kafka UI only with --profile ui)
+        run: |
+          core=$(docker compose -f infra/docker-compose.yml config --services | sort | paste -sd,)
+          echo "core: $core"
+          test "$core" = "kafka,postgres,redis,schema-registry"
 
       - name: Pull images
         run: |
