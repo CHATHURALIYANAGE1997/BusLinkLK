@@ -18,6 +18,7 @@
   <a href="https://github.com/CHATHURALIYANAGE1997/BusLinkLK/issues/new?labels=enhancement">Request Feature</a>
 </p>
 
+[![CI][ci-shield]][ci-url]
 [![Status][status-shield]][jira-url]
 [![Sprint][sprint-shield]][jira-url]
 [![Java][java-shield]][java-url]
@@ -244,6 +245,7 @@ This is a personal learning project, but if you spot something wrong or have an 
 2. Commit your changes, with the Jira key in the message (`git commit -m "SCRUM-<n> Add something useful"`)
 3. Push the branch (`git push origin feature/SCRUM-<n>-short-name`)
 4. Open a pull request into `main`
+5. GitHub Actions builds and tests the branch (`./mvnw verify` on JDK 21); the pull request can be merged once the **build** check is green
 
 I use trunk-based development: feature branches are short-lived, every change reaches `main` through a pull request with a passing build, and milestones are tagged on `main` (for example `v0.1-sprint-0`).
 
@@ -279,6 +281,8 @@ Project link: [https://github.com/CHATHURALIYANAGE1997/BusLinkLK](https://github
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+[ci-shield]: https://github.com/CHATHURALIYANAGE1997/BusLinkLK/actions/workflows/ci.yml/badge.svg?branch=main
+[ci-url]: https://github.com/CHATHURALIYANAGE1997/BusLinkLK/actions/workflows/ci.yml
 [jira-url]: https://chathurabimalka.atlassian.net/jira/software/projects/SCRUM/boards/1
 [issues-url]: https://github.com/CHATHURALIYANAGE1997/BusLinkLK/issues
 [status-shield]: https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge
