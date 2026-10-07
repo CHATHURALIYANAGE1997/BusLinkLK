@@ -1,0 +1,145 @@
+# BusLink LK - local development infrastructure
+#
+#   docker compose -f infra/docker-compose.yml up -d --wait     start and wait until healthy
+#   docker compose -f infra/docker-compose.yml ps               show status
+#   docker compose -f infra/docker-compose.yml down             stop (data is kept)
+#   docker compose -f infra/docker-compose.yml down -v          stop and delete all data
+#
+# This file is for LOCAL DEVELOPMENT ONLY: one Kafka broker, no TLS, simple
+# passwords. Cloud environments use the same application images with different
+# configuration (see docs/adr, ADR-009 "Configuration and environments").
+#
+# Every value can be overridden in infra/.env (copy infra/.env.example).
+# Host ports avoid the 8080-8090 range reserved for the BusLink services.
+
+name: ${COMPOSE_PROJECT_NAME:-buslink}
+
+services:
+
+  # ---------------------------------------------------------------- Kafka (KRaft)
+  # Single node acting as both broker and controller - no ZooKeeper.
+  #   from your laptop / IDE:     localhost:9092
+  #   from other containers:      kafka:29092
+  kafka:
+    image: apache/kafka:${KAFKA_VERSION:-4.3.1}
+    container_name: buslink-kafka
+    ports:
+      - "${KAFKA_HOST_PORT:-9092}:9092"
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-XxPagFSwTb6mmoTEjKUTLw}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: INTERNAL://:29092,CONTROLLER://:29093,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:${KAFKA_HOST_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # One broker, so internal topics can only have one replica.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  # ------------------------------------------------------------- Schema Registry
+  # Stores the Avro schemas of every event and checks compatibility.
+  #   http://localhost:8091
+  schema-registry:
+    image: confluentinc/cp-schema-registry:${SCHEMA_REGISTRY_VERSION:-8.3.2}
+    container_name: buslink-schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_HOST_PORT:-8091}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+      SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: backward
+      SCHEMA_REGISTRY_HEAP_OPTS: "-Xms256m -Xmx256m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/subjects > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------- Kafka UI
+  # Browse topics, messages, consumer groups and schemas.
+  #   http://localhost:8089
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:${KAFKA_UI_VERSION:-v1.5.0}
+    container_name: buslink-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_UI_HOST_PORT:-8089}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: buslink-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      DYNAMIC_CONFIG_ENABLED: "false"
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    restart: unless-stopped
+
+  # ------------------------------------------------------ PostgreSQL + PostGIS
+  # One server, one database and owner per service (see postgres/20-buslink-databases.sh).
+  #   jdbc:postgresql://localhost:5432/<route|fare|wallet|analytics>
+  postgres:
+    image: postgis/postgis:${POSTGIS_VERSION:-17-3.6}
+    container_name: buslink-postgres
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-buslink}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-buslink}
+      POSTGRES_DB: buslink
+      ROUTE_DB_PASSWORD: ${ROUTE_DB_PASSWORD:-route}
+      FARE_DB_PASSWORD: ${FARE_DB_PASSWORD:-fare}
+      WALLET_DB_PASSWORD: ${WALLET_DB_PASSWORD:-wallet}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD:-analytics}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/20-buslink-databases.sh:/docker-entrypoint-initdb.d/20-buslink-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d buslink"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------- Redis
+  # Live read model for journey-query-service; rate limiting later.
+  #   redis://localhost:6379
+  redis:
+    image: redis:${REDIS_VERSION:-8.10-alpine}
+    container_name: buslink-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:

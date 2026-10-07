@@ -1,0 +1,89 @@
+# Starts the local infrastructure (infra/docker-compose.yml) on a GitHub runner
+# and checks that every service is healthy and correctly configured.
+# Runs only when infra files change, plus on demand.
+name: Infra smoke test
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  infra-smoke:
+    name: infra-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE: docker compose -f infra/docker-compose.yml
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Validate compose file
+        run: $COMPOSE config --quiet
+
+      - name: Start infrastructure and wait until healthy
+        run: $COMPOSE up -d --wait --wait-timeout 240
+
+      - name: Show container status
+        run: $COMPOSE ps
+
+      - name: Kafka accepts a topic and a message
+        run: |
+          $COMPOSE exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
+            --create --topic smoke.test --partitions 1 --replication-factor 1
+          echo "hello-buslink" | $COMPOSE exec -T kafka /opt/kafka/bin/kafka-console-producer.sh \
+            --bootstrap-server kafka:29092 --topic smoke.test
+          msg=$($COMPOSE exec -T kafka /opt/kafka/bin/kafka-console-consumer.sh \
+            --bootstrap-server kafka:29092 --topic smoke.test --from-beginning --max-messages 1 --timeout-ms 20000)
+          echo "consumed: $msg"
+          test "$msg" = "hello-buslink"
+
+      - name: Schema Registry answers on the host port
+        run: |
+          curl -fsS http://localhost:8091/subjects
+          curl -fsS http://localhost:8091/config | grep -i '"BACKWARD"'
+
+      - name: Kafka UI is up on the host port
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8089/actuator/health | grep -q UP; then echo "Kafka UI up"; exit 0; fi
+            sleep 3
+          done
+          echo "Kafka UI did not come up"; exit 1
+
+      - name: PostgreSQL has one database per service, PostGIS in route
+        run: |
+          dbs=$($COMPOSE exec -T postgres psql -U buslink -d postgres -Atc \
+            "select string_agg(datname || ':' || pg_get_userbyid(datdba), ',' order by datname) from pg_database where datname in ('route','fare','wallet','analytics')")
+          echo "databases: $dbs"
+          test "$dbs" = "analytics:analytics,fare:fare,route:route,wallet:wallet"
+          $COMPOSE exec -T -e PGPASSWORD=route postgres psql -h localhost -U route -d route -Atc "select postgis_full_version()" | head -c 120; echo
+          $COMPOSE exec -T -e PGPASSWORD=route postgres psql -h localhost -U route -d route -Atc \
+            "select ST_AsText(ST_SetSRID(ST_MakePoint(80.2170, 6.0329), 4326))"
+
+      - name: Redis answers PONG
+        run: test "$($COMPOSE exec -T redis redis-cli ping)" = "PONG"
+
+      - name: Show logs on failure
+        if: failure()
+        run: $COMPOSE logs --no-color --tail 200
+
+      - name: Stop and remove everything
+        if: always()
+        run: $COMPOSE down -v
