@@ -67,7 +67,8 @@ services:
       SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: backward
       SCHEMA_REGISTRY_HEAP_OPTS: "-Xms256m -Xmx256m"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/subjects > /dev/null"]
+      # The image has no curl, so speak HTTP over bash's /dev/tcp.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8081 && printf 'GET /subjects HTTP/1.0\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '"]
       interval: 10s
       timeout: 5s
       retries: 12
