@@ -41,7 +41,7 @@ jobs:
         run: |
           core=$(docker compose -f infra/docker-compose.yml config --services | sort | paste -sd,)
           echo "core: $core"
-          test "$core" = "kafka,postgres,redis,schema-registry"
+          test "$core" = "kafka,kafka-init,postgres,redis,schema-registry"
 
       - name: Pull images
         run: |
@@ -61,6 +61,46 @@ jobs:
 
       - name: Show container status
         run: $COMPOSE ps
+
+      - name: kafka-init finished successfully
+        run: |
+          code=$(docker wait buslink-kafka-init)
+          docker logs buslink-kafka-init
+          test "$code" = "0"
+
+      - name: Every topic in topics.conf exists with its partitions and configs
+        run: |
+          KT="$COMPOSE exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092"
+          KC="$COMPOSE exec -T kafka /opt/kafka/bin/kafka-configs.sh --bootstrap-server kafka:29092"
+          described=$($KT --describe --exclude-internal)
+          configs=$($KC --describe --entity-type topics)
+          failed=0
+          while read -r name partitions cfg _; do
+            [[ -z "$name" || "$name" == \#* ]] && continue
+            actual=$(echo "$described" | awk -v t="$name" '$1=="Topic:" && $2==t { for (i=1;i<=NF;i++) if ($i=="PartitionCount:") print $(i+1) }')
+            if [ "$actual" != "$partitions" ]; then
+              echo "::error title=topic partitions::$name has '${actual:-missing}' partitions, expected $partitions"; failed=1; continue
+            fi
+            IFS=',' read -ra kvs <<< "$cfg"
+            for kv in "${kvs[@]}"; do
+              echo "$configs" | awk -v t="$name" '/^Dynamic configs for topic/ { cur=$5; next } cur==t { print $1 }' | grep -qxF "$kv" \
+                || { echo "::error title=topic config::$name is missing $kv"; failed=1; }
+            done
+            echo "ok  $name  $partitions partitions  $cfg"
+          done < infra/kafka/topics.conf
+          exit $failed
+
+      - name: Running kafka-init again changes nothing
+        run: |
+          expected=$(grep -cvE '^[[:space:]]*(#|$)' infra/kafka/topics.conf)
+          out=$($COMPOSE run --rm kafka-init)
+          echo "$out"
+          echo "$out" | grep -q "done: 0 created, 0 updated, ${expected} unchanged, 0 warnings"
+
+      - name: Broker refuses to auto-create topics
+        run: |
+          $COMPOSE exec -T kafka /opt/kafka/bin/kafka-configs.sh --bootstrap-server kafka:29092 \
+            --describe --entity-type brokers --entity-name 1 --all | grep -E '^ +auto.create.topics.enable=false '
 
       - name: Kafka accepts a topic and a message
         run: |

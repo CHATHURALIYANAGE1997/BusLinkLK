@@ -47,6 +47,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics come only from kafka/topics.conf (kafka-init below). A typo in a
+      # topic name should fail loudly, not silently create a 1-partition topic.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_HEAP_OPTS: "-Xms512m -Xmx512m"
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 > /dev/null 2>&1"]
@@ -55,6 +58,24 @@ services:
       retries: 12
       start_period: 20s
     restart: unless-stopped
+
+  # ------------------------------------------------------------------ kafka-init
+  # One-shot: creates or updates every topic in kafka/topics.conf, then exits 0.
+  # Re-run by hand after editing topics.conf:
+  #   docker compose -f infra/docker-compose.yml run --rm kafka-init
+  kafka-init:
+    image: apache/kafka:${KAFKA_VERSION:-4.3.1}
+    container_name: buslink-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/buslink/kafka/create-topics.sh"]
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_HEAP_OPTS: "-Xms64m -Xmx256m"
+    volumes:
+      - ./kafka:/buslink/kafka:ro
+    restart: "no"
 
   # ------------------------------------------------------------- Schema Registry
   # Stores the Avro schemas of every event and checks compatibility.

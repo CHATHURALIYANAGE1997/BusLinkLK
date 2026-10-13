@@ -198,6 +198,8 @@ Fair warning: this is early days. Sprint 0 is about getting the foundation in pl
    | PostgreSQL + PostGIS | `localhost:5432` (databases `route`, `fare`, `wallet`, `analytics`) |
    | Redis | `localhost:6379` |
 
+   All Kafka topics are created on start from [infra/kafka/topics.conf](infra/kafka/topics.conf); auto-creation is off.
+
    Stop it with `docker compose -f infra/docker-compose.yml down` (add `-v` to wipe the data). More detail in [infra/README.md](infra/README.md).
 3. Build and run the tests
    ```sh
